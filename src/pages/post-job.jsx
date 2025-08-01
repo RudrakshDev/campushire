@@ -1,4 +1,3 @@
-Ravi
 
 import { getCompanies } from "@/api/apiCompanies";
 import { addNewJob } from "@/api/apiJobs";
