@@ -15,6 +15,8 @@ import HrDetail from "./pages/hr-detail";
 import UserApplyList from "./pages/user-apply-list";
 import HrLandingPage from "./pages/hr-landing-page";
 
+import { Analytics } from "@vercel/analytics/react"
+
 import "./App.css";
 
 const router = createBrowserRouter([
@@ -101,6 +103,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <RouterProvider router={router} />
+      <Analytics />
     </ThemeProvider>
   );
 }
