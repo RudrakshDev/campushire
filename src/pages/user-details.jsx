@@ -1,19 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { BarLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { getUserDetails, upsertUserDetails } from "../api/apiUserDetails";
-import { supabase } from "../utils/supabase";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 const UserDetails = () => {
     const { user, isLoaded } = useUser();
     const { getToken } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const isEditMode = searchParams.get("edit") === "1";
+    const redirectTo = searchParams.get("redirect") || "/jobs";
 
     const [form, setForm] = useState({
-        // 1. Contact Information
         first_name: "",
         middle_name: "",
         last_name: "",
@@ -31,14 +33,8 @@ const UserDetails = () => {
         state: "",
         country: "",
         pincode: "",
-
-        // 2. Target Title
         target_title: "",
-
-        // 3. Professional Summary
         professional_summary: "",
-
-        // 4. Work Experience
         work_experience: [{
             company_name: "",
             company_description: "",
@@ -50,8 +46,6 @@ const UserDetails = () => {
             end_date: "",
             currently_working: false
         }],
-
-        // 5. Education
         education: [{
             university: "",
             institution: "",
@@ -68,14 +62,10 @@ const UserDetails = () => {
             optional_subjects: "",
             additional_info: ""
         }],
-
-        // 6. Skills & Interests
         skills_interests: [{
             category: "",
             skills: ""
         }],
-
-        // 7. Certifications
         certifications: [{
             name: "",
             issuing_organization: "",
@@ -83,15 +73,11 @@ const UserDetails = () => {
             end_date: "",
             no_expiry: false
         }],
-
-        // 8. Awards & Scholarships
         awards_scholarships: [{
             name: "",
             issuing_organization: "",
             date_earned: ""
         }],
-
-        // 9. Projects
         projects: [{
             title: "",
             type: "",
@@ -103,8 +89,6 @@ const UserDetails = () => {
             tools_technologies: "",
             description: ""
         }],
-
-        // 10. Volunteering & Leadership
         volunteering_leadership: [{
             organization_name: "",
             role_involvement: "",
@@ -115,8 +99,6 @@ const UserDetails = () => {
             currently_active: false,
             additional_info: ""
         }],
-
-        // 11. Publications & Research Papers
         publications_research: [{
             title: "",
             type: "",
@@ -125,30 +107,22 @@ const UserDetails = () => {
             co_authors: "",
             additional_info: ""
         }],
-
-        // 12. Languages Known
         languages: [{
             language: "",
             proficiency_level: ""
         }],
-
-        // 13. Extracurricular Activities
         extracurricular: [{
             name: "",
             description: "",
             date: ""
         }],
-
-        // 14. References
-        references: [{
+        references_list: [{
             name: "",
             designation: "",
             organization: "",
             email: "",
             phone: ""
         }],
-
-        // 15. Patents & IP
         patents_ip: [{
             title: "",
             patent_number: "",
@@ -156,8 +130,6 @@ const UserDetails = () => {
             date_filed_granted: "",
             additional_info: ""
         }],
-
-        // 16. Memberships & Affiliations
         memberships: [{
             organization_name: "",
             membership_type: "",
@@ -171,36 +143,38 @@ const UserDetails = () => {
     const [error, setError] = useState(null);
     const [initialLoad, setInitialLoad] = useState(true);
     const [expandedSections, setExpandedSections] = useState(new Set([0]));
+    const [debugDraft, setDebugDraft] = useState(null);
+    const hasAppliedResumeDataRef = useRef(false);
 
-    // Create a stable localStorage key (scoped per user when available)
-    const getDraftKey = () => `userDetailsDraft${user?.id ? `:${user.id}` : ''}`;
-
-    // Load saved draft from localStorage when component mounts or user context becomes available
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem(getDraftKey());
-            if (raw) {
-                const saved = JSON.parse(raw);
-                if (saved && typeof saved === 'object') {
-                    setForm(prev => ({ ...prev, ...saved }));
-                }
+    // Helper to merge values only into empty fields
+    const fillOnlyMissing = (current, draft) => {
+        const result = { ...current };
+        Object.keys(draft || {}).forEach((key) => {
+            const dVal = draft[key];
+            const cVal = result[key];
+            const isEmptyString = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === "");
+            if (Array.isArray(dVal)) {
+                const hasMeaningful = Array.isArray(cVal) && cVal.some((it) => it && Object.values(it).some((v) => String(v || "").trim() !== ""));
+                if (!hasMeaningful) result[key] = dVal;
+            } else if (isEmptyString(cVal) && !isEmptyString(dVal)) {
+                result[key] = dVal;
             }
-        } catch (_) {
-            // ignore malformed drafts
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoaded, user]);
+        });
+        return result;
+    };
 
-    // Persist draft to localStorage on any form change
+    // Apply resume data from router state when component mounts
     useEffect(() => {
-        try {
-            localStorage.setItem(getDraftKey(), JSON.stringify(form));
-        } catch (_) {
-            // storage might be unavailable; fail silently
+        const from = searchParams.get("from");
+        if (from === "resume" && location.state?.resumeData && !hasAppliedResumeDataRef.current) {
+            const resumeData = location.state.resumeData;
+            setForm(prev => fillOnlyMissing(prev, resumeData));
+            setDebugDraft(resumeData);
+            hasAppliedResumeDataRef.current = true;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form]);
+    }, [location.state, searchParams]);
 
+    // Fetch user details from server
     useEffect(() => {
         const fetchDetails = async () => {
             if (!user?.id) return;
@@ -216,8 +190,26 @@ const UserDetails = () => {
 
                 const data = await getUserDetails(token, { user_id: user.id });
                 if (data) {
-                    setForm(prev => ({ ...prev, ...data }));
-                    if (data.first_name && data.college_email) {
+                    // If coming from resume import and server has data, merge them intelligently
+                    let merged = data;
+                    if (isEditMode && location.state?.resumeData) {
+                        const resumeData = location.state.resumeData;
+                        const nonEmpty = (v) => typeof v === 'string' ? v.trim() !== '' : v !== undefined && v !== null;
+                        const next = { ...data };
+                        Object.keys(resumeData).forEach((k) => {
+                            const v = resumeData[k];
+                            if (Array.isArray(v)) {
+                                const hasMeaningful = v.some((it) => it && Object.values(it).some((vv) => (typeof vv === 'string' ? vv.trim() !== '' : Boolean(vv))));
+                                const serverMeaningful = Array.isArray(next[k]) && next[k].some((it) => it && Object.values(it).some((vv) => (typeof vv === 'string' ? vv.trim() !== '' : Boolean(vv))));
+                                if (hasMeaningful && !serverMeaningful) next[k] = v;
+                            } else if (nonEmpty(v)) {
+                                if (!nonEmpty(next[k])) next[k] = v;
+                            }
+                        });
+                        merged = next;
+                    }
+                    setForm(prev => ({ ...prev, ...merged }));
+                    if (!isEditMode && data.first_name && data.college_email) {
                         navigate("/jobs");
                     }
                 }
@@ -233,7 +225,7 @@ const UserDetails = () => {
         if (isLoaded && user) {
             fetchDetails();
         }
-    }, [isLoaded, user, navigate, getToken]);
+    }, [isLoaded, user, navigate, getToken, isEditMode, location.state]);
 
     const toggleSection = (sectionIndex) => {
         const newExpanded = new Set(expandedSections);
@@ -304,7 +296,7 @@ const UserDetails = () => {
             publications_research: { title: "", type: "", publisher: "", date: "", co_authors: "", additional_info: "" },
             languages: { language: "", proficiency_level: "" },
             extracurricular: { name: "", description: "", date: "" },
-            references: { name: "", designation: "", organization: "", email: "", phone: "" },
+            references_list: { name: "", designation: "", organization: "", email: "", phone: "" },
             patents_ip: { title: "", patent_number: "", issuing_authority: "", date_filed_granted: "", additional_info: "" },
             memberships: { organization_name: "", membership_type: "", start_date: "", end_date: "", additional_info: "" }
         };
@@ -342,9 +334,7 @@ const UserDetails = () => {
             });
 
             console.log("User details saved successfully:", result);
-            // Clear saved draft on successful submit
-            try { localStorage.removeItem(getDraftKey()); } catch (_) {}
-            navigate("/jobs");
+            navigate(redirectTo);
         } catch (err) {
             console.error("Error saving user details:", err);
             setError(err.message || "Failed to save details. Please try again.");
@@ -444,16 +434,16 @@ const UserDetails = () => {
                                 {`Select ${field.label.toLowerCase()}`}
                             </span>
                         )}
-                    <input
-                        type="month"
-                        name={name}
-                        value={value || ""}
-                        onChange={handleChange}
+                        <input
+                            type="month"
+                            name={name}
+                            value={value || ""}
+                            onChange={handleChange}
                             className={`${baseInputClasses} month-input ${!value ? "text-transparent" : "text-current"}`}
                             data-has-value={!!value}
                             disabled={loading || disabledOverride}
-                        required={field.required}
-                    />
+                            required={field.required}
+                        />
                     </div>
                 );
             case "number":
@@ -524,7 +514,6 @@ const UserDetails = () => {
             title: "4. Work Experience",
             type: "array",
             arrayField: "work_experience",
-
             fields: [
                 { name: "company_name", label: "Company/Organization Name", type: "text", required: false },
                 { name: "company_description", label: "Company/Organization Description", type: "textarea", required: false },
@@ -626,7 +615,7 @@ const UserDetails = () => {
             arrayField: "publications_research",
             fields: [
                 { name: "title", label: "Title of Publication/Research Paper", type: "text", required: false },
-                { name: "type", label: "11. Publications & Research Paper Type", type: "text", required: false },
+                { name: "type", label: "Publication Type", type: "text", required: false },
                 { name: "publisher", label: "Publisher/Journal/Conference Name", type: "text", required: false },
                 { name: "date", label: "Date of Publication", type: "month", required: false },
                 { name: "co_authors", label: "Co-Authors", type: "text", required: false },
@@ -713,11 +702,10 @@ const UserDetails = () => {
             `}</style>
             <div className="container mx-auto px-4 max-w-5xl">
                 <div className="text-center mb-8">
-                    {/* <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2 animate-pulse"> */}
                     <h2 className="flex flex-col items-center justify-center font-extrabold sm:text-6xl text-black dark:text-white">
                         Student Details Form
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-300 text-lg">Complete your profile to get started</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg">{isEditMode ? "Update your profile details" : "Complete your profile to get started"}</p>
                     <div className="mt-4 flex justify-center">
                         <div className="w-24 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-full"></div>
                     </div>
@@ -735,6 +723,13 @@ const UserDetails = () => {
                                 <p className="text-sm font-medium">{error}</p>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {isEditMode && debugDraft && (
+                    <div className="mb-6 text-xs border rounded-lg p-4 bg-white dark:bg-gray-900 dark:border-gray-700">
+                        <div className="font-semibold mb-2">Debug: parsed resume data detected</div>
+                        <pre className="whitespace-pre-wrap break-words">{JSON.stringify(debugDraft, null, 2)}</pre>
                     </div>
                 )}
 
@@ -757,7 +752,6 @@ const UserDetails = () => {
                             {expandedSections.has(sectionIndex) && (
                                 <div className="p-8 space-y-6 bg-white dark:bg-gray-900 animate-in slide-in-from-top-2 duration-300">
                                     {section.type === "array" ? (
-                                        // Array sections (Work Experience, Education, etc.)
                                         <div className="space-y-6">
                                             {form[section.arrayField].map((item, itemIndex) => (
                                                 <div key={itemIndex} className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 shadow-md dark:shadow-none hover:shadow-lg transition-all duration-200">
@@ -785,85 +779,11 @@ const UserDetails = () => {
                                                                     {field.label}
                                                                     {field.required && <span className="text-red-500 ml-1">*</span>}
                                                                 </label>
-                                                                {field.name === "additional_info" ? (
-                                                                    <div className="space-y-3">
-                                                                        {(() => {
-                                                                            const bullets = (item[field.name] || "").split("\n");
-                                                                            const visibleBullets = bullets.length === 1 && bullets[0] === "" ? [] : bullets;
-
-                                                                            const updateBullets = (newBullets) => {
-                                                                                const syntheticEvent = {
-                                                                                    target: {
-                                                                                        name: `${section.arrayField}.${itemIndex}.${field.name}`,
-                                                                                        value: newBullets.join("\n"),
-                                                                                        type: "text"
-                                                                                    }
-                                                                                };
-                                                                                handleChange(syntheticEvent);
-                                                                            };
-
-                                                                            const handleBulletChange = (bIdx, val) => {
-                                                                                const next = [...visibleBullets];
-                                                                                next[bIdx] = val;
-                                                                                updateBullets(next);
-                                                                            };
-
-                                                                            const addBullet = () => {
-                                                                                if (!visibleBullets || visibleBullets.length === 0) {
-                                                                                    updateBullets([" "]); // seed with a space so input appears
-                                                                                } else {
-                                                                                    updateBullets([...(visibleBullets || []), ""]);
-                                                                                }
-                                                                            };
-
-                                                                            const removeBullet = (bIdx) => {
-                                                                                const next = visibleBullets.filter((_, i) => i !== bIdx);
-                                                                                updateBullets(next);
-                                                                            };
-
-                                                                            return (
-                                                                                <>
-                                                                                    <div className="space-y-2">
-                                                                                        {visibleBullets.map((b, bIdx) => (
-                                                                                            <div key={bIdx} className="flex items-start gap-3">
-                                                                                                <input type="checkbox" className="mt-3 h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" disabled />
-                                                                                                <textarea
-                                                                                                    value={b}
-                                                                                                    onChange={(e) => handleBulletChange(bIdx, e.target.value)}
-                                                                                                    placeholder="Add detail"
-                                                                                                    rows={2}
-                                                                                                    className="flex-1 w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y min-h-[2.75rem]"
-                                                                                                    disabled={loading}
-                                                                                                />
-                                                                                                <button
-                                                                                                    type="button"
-                                                                                                    onClick={() => removeBullet(bIdx)}
-                                                                                                    className="text-red-600 hover:text-red-800 text-sm font-medium px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800"
-                                                                                                >
-                                                                                                    Remove
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={addBullet}
-                                                                                        className="inline-flex items-center gap-2 px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                                                                                    >
-                                                                                        <span className="text-lg leading-none">+</span>
-                                                                                        <span className="font-medium">Add Bullet</span>
-                                                                                    </button>
-                                                                                </>
-                                                                            );
-                                                                        })()}
-                                                                    </div>
-                                                                ) : (
-                                                                    renderField(
-                                                                        field,
-                                                                        `${section.arrayField}.${itemIndex}.${field.name}`,
-                                                                        item[field.name],
-                                                                        section.arrayField === "work_experience" && field.name === "end_date" && item.currently_working
-                                                                    )
+                                                                {renderField(
+                                                                    field,
+                                                                    `${section.arrayField}.${itemIndex}.${field.name}`,
+                                                                    item[field.name],
+                                                                    section.arrayField === "work_experience" && field.name === "end_date" && item.currently_working
                                                                 )}
                                                             </div>
                                                         ))}
@@ -879,7 +799,6 @@ const UserDetails = () => {
                                             </button>
                                         </div>
                                     ) : (
-                                        // Regular sections (Contact Info, Target Title, etc.)
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {section.fields.map((field, fieldIndex) => (
                                                 <div key={fieldIndex} className={field.type === "textarea" ? "md:col-span-2" : ""}>

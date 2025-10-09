@@ -12,12 +12,17 @@ import SavedJobs from "./pages/saved-jobs";
 import JobPage from "./pages/job";
 import UserDetails from "./pages/user-details";
 import HrDetail from "./pages/hr-detail";
+import AdminPage from "./pages/admin";
+import AdminLogin from "./pages/admin-login";
+import AdminRoute from "./components/admin-route";
 import UserApplyList from "./pages/user-apply-list";
 import HrLandingPage from "./pages/hr-landing-page";
 
 import { Analytics } from "@vercel/analytics/react"
 
 import "./App.css";
+import ResumeImport from "./pages/resume-import";
+import ResumeDragDrop from "./pages/resume-drag-drop";
 
 const router = createBrowserRouter([
   {
@@ -88,11 +93,39 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "/resume-import",
+        element: (
+          <ProtectedRoute>
+            <ResumeImport />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/resume-drag-drop",
+        element: (
+          <ProtectedRoute>
+            <ResumeDragDrop />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/admin-login",
+        element: <AdminLogin />,
+      },
+      {
         path: "/job/:id",
         element: (
           <ProtectedRoute>
             <JobPage />
           </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/admin",
+        element: (
+          <AdminRoute>
+            <AdminPage />
+          </AdminRoute>
         ),
       },
     ],

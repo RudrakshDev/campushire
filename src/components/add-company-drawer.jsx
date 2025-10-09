@@ -14,68 +14,64 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import useFetch from "@/hooks/use-fetch";
-import { addNewCompany } from "@/api/apiCompanies";
+import { ensureCompanyByName, updateCompanyLogo } from "@/api/apiCompanies";
 import { BarLoader } from "react-spinners";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useUser } from "@clerk/clerk-react";
+import { getHrProfileByRecruiter } from "@/api/apiHrProfiles";
 
 const schema = z.object({
-  name: z.string().min(1, { message: "Company name is required" }),
   logo: z
     .any()
     .refine(
-      (file) =>
-        file[0] &&
-        (file[0].type === "image/png" || file[0].type === "image/jpeg"),
-      {
-        message: "Only Images are allowed",
-      }
+      (file) => file?.[0] && (file[0].type === "image/png" || file[0].type === "image/jpeg"),
+      { message: "Only Images are allowed" }
     ),
 });
 
 const AddCompanyDrawer = ({ fetchCompanies }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(schema),
-  });
+  const { user } = useUser();
+  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
 
-  const {
-    loading: loadingAddCompany,
-    error: errorAddCompany,
-    data: dataAddCompany,
-    fn: fnAddCompany,
-  } = useFetch(addNewCompany);
+  const { loading: loadingHr, data: hrProfile, fn: fnHr } = useFetch(getHrProfileByRecruiter, { recruiter_id: user?.id });
+  const { loading: loadingEnsure, data: ensuredCompany, fn: fnEnsure } = useFetch(ensureCompanyByName, {});
+  const { loading: loadingLogo, error: errorLogo, data: dataLogo, fn: fnUpdateLogo } = useFetch(updateCompanyLogo);
+
+  useEffect(() => {
+    if (user?.id) fnHr();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const companyName = useMemo(() => (hrProfile?.company_name || "").trim(), [hrProfile]);
 
   const onSubmit = async (data) => {
-    fnAddCompany({
-      ...data,
-      logo: data.logo[0],
-    });
+    const file = data.logo?.[0];
+    if (!file || !companyName) return;
+    // Ensure we have a single company id, then update by id
+    const ensured = await fnEnsure({ name: companyName });
+    const company_id = ensured?.id || ensuredCompany?.id;
+    if (!company_id) return;
+    await fnUpdateLogo({ company_id }, file);
   };
 
   useEffect(() => {
-    if (dataAddCompany?.length > 0) {
+    if (dataLogo) {
       fetchCompanies();
     }
-  }, [loadingAddCompany]);
+  }, [dataLogo, fetchCompanies]);
 
   return (
     <Drawer>
       <DrawerTrigger>
         <Button type="button" size="sm" variant="secondary">
-          Add Company
+          Add Company Logo
         </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Add a New Company</DrawerTitle>
+          <DrawerTitle>Upload Company Logo</DrawerTitle>
         </DrawerHeader>
         <form className="flex gap-2 p-4 pb-0">
-          {/* Company Name */}
-          <Input placeholder="Company name" {...register("name")} />
-
           {/* Company Logo */}
           <Input
             type="file"
@@ -95,12 +91,11 @@ const AddCompanyDrawer = ({ fetchCompanies }) => {
           </Button>
         </form>
         <DrawerFooter>
-          {errors.name && <p className="text-red-500">{errors.name.message}</p>}
           {errors.logo && <p className="text-red-500">{errors.logo.message}</p>}
-          {errorAddCompany?.message && (
-            <p className="text-red-500">{errorAddCompany?.message}</p>
+          {errorLogo?.message && (
+            <p className="text-red-500">{errorLogo?.message}</p>
           )}
-          {loadingAddCompany && <BarLoader width={"100%"} color="#36d7b7" />}
+          {(loadingHr || loadingEnsure || loadingLogo) && <BarLoader width={"100%"} color="#36d7b7" />}
           <DrawerClose asChild>
             <Button type="button" variant="secondary">
               Cancel

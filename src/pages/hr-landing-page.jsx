@@ -40,7 +40,7 @@ const HrLandingPage = () => {
                     </span>
                 </h1>
                 <p className="text-gray-300 sm:mt-4 text-xs sm:text-xl">
-                    Explore thousands of job listings or find the perfect candidate
+                    Explore thousands of the perfect candidate
                 </p>
             </section>
             <div className="flex gap-6 justify-center">

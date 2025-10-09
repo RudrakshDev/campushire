@@ -72,7 +72,25 @@ const JobCard = ({
       </CardHeader>
       <CardContent className="flex flex-col gap-4 flex-1">
         <div className="flex justify-between">
-          {job.company && <img src={job.company.logo_url} className="h-6" />}
+          {job.company?.logo_url && (
+            (() => {
+              const isAmazon = /amazon/i.test(
+                (job.company.name || job.company.logo_url || "")
+              );
+              const logoClass = isAmazon
+                ? "h-6 filter brightness-0 dark:filter-none dark:brightness-100"
+                : "h-6";
+              const src = `${job.company.logo_url}?_=${job.id}`;
+              return (
+                <img
+                  src={src}
+                  className={logoClass}
+                  alt={job.company.name}
+                  loading="lazy"
+                />
+              );
+            })()
+          )}
           <div className="flex gap-2 items-center">
             <MapPinIcon size={15} /> {job.location}
           </div>

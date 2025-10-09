@@ -1,4 +1,4 @@
-import { getCompanies } from "@/api/apiCompanies";
+import { getCompanies, ensureCompanyByName } from "@/api/apiCompanies";
 import { addNewJob } from "@/api/apiJobs";
 import AddCompanyDrawer from "@/components/add-company-drawer";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { BarLoader } from "react-spinners";
 import { z } from "zod";
 import { getHrProfileByRecruiter } from "@/api/apiHrProfiles";
+import { useAuth } from "@clerk/clerk-react";
 
 const schema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
@@ -35,12 +36,15 @@ const schema = z.object({
 
 const PostJob = () => {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: { location: "", company_id: "", requirements: "" },
@@ -92,6 +96,54 @@ const PostJob = () => {
       navigate("/hr-details");
     }
   }, [isLoaded, loadingHr, hrProfile]);
+
+  // Prefill company from HR profile if available
+  useEffect(() => {
+    if (!isLoaded || loadingCompanies || loadingHr) return;
+    if (!companies || !hrProfile) return;
+    const currentCompanyId = watch("company_id");
+    const currentLocation = watch("location");
+
+    // Company prefill
+    const setCompanyByName = async (name) => {
+      const token = await getToken({ template: "supabase" });
+      if (!token || !name) return;
+      try {
+        const ensured = await ensureCompanyByName(token, { name });
+        if (ensured?.id != null) {
+          // Refresh companies list so the new company appears
+          await fnCompanies();
+          setValue("company_id", String(ensured.id), { shouldValidate: true, shouldDirty: true });
+        }
+      } catch (_) {}
+    };
+
+    if (!currentCompanyId) {
+      const rawName = hrProfile?.company_name || "";
+      const hrCompanyName = rawName.trim();
+      if (hrCompanyName) {
+        const match = companies.find((c) => (c?.name || "").trim().toLowerCase() === hrCompanyName.toLowerCase());
+        if (match?.id != null) {
+          setValue("company_id", String(match.id), { shouldValidate: true, shouldDirty: true });
+        } else {
+          // Create it if not present
+          setCompanyByName(hrCompanyName);
+        }
+      }
+    }
+
+    // Location prefill (use saved state if it matches IN states)
+    if (!currentLocation) {
+      const states = State.getStatesOfCountry("IN");
+      const hrState = (hrProfile?.state || "").trim().toLowerCase();
+      if (hrState && Array.isArray(states)) {
+        const stateMatch = states.find((s) => (s?.name || "").trim().toLowerCase() === hrState);
+        if (stateMatch?.name) {
+          setValue("location", stateMatch.name, { shouldValidate: true, shouldDirty: true });
+        }
+      }
+    }
+  }, [isLoaded, loadingCompanies, loadingHr, companies, hrProfile, setValue, watch, getToken, fnCompanies]);
 
   if (!isLoaded || loadingCompanies || loadingHr) {
     return <BarLoader className="mb-4" width={"100%"} color="#36d7b7" />;
@@ -155,8 +207,8 @@ const PostJob = () => {
                 <SelectContent>
                   <SelectGroup>
                     {companies?.map(({ name, id }) => (
-                      <SelectItem key={name} value={id}>
-                        {name}
+                      <SelectItem key={id ?? name} value={String(id)}>
+                        {name ?? "Unnamed Company"}
                       </SelectItem>
                     ))}
                   </SelectGroup>

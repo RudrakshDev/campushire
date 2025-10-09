@@ -59,10 +59,15 @@
   }
 }
 
+.wmde-markdown {
+  color: #111827; /* gray-900 for light mode */
+}
 .wmde-markdown ul {
   list-style-type: disc;
   padding-left: 25px;
-  color: white;
+}
+.dark .wmde-markdown {
+  color: #f3f4f6; /* gray-100 for dark mode */
 }
 
 @layer base {

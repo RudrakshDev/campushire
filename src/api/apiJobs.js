@@ -1,7 +1,7 @@
 import supabaseClient from "@/utils/supabase";
 
 // Fetch Jobs
-export async function getJobs(token, { location, company_id, searchQuery }) {
+export async function getJobs(token, { location, company_id, searchQuery, recommended }) {
   const supabase = await supabaseClient(token);
   let query = supabase
     .from("jobs")
@@ -16,7 +16,31 @@ export async function getJobs(token, { location, company_id, searchQuery }) {
   }
 
   if (searchQuery) {
-    query = query.ilike("title", `%${searchQuery}%`);
+    if (recommended) {
+      // Split comma/space separated skills and OR-match across multiple columns
+      const tokens = String(searchQuery)
+        .split(/[,\s]+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .slice(0, 12); // cap to avoid overly long queries
+      const cols = ["title", "description", "requirements"];
+      if (tokens.length > 0) {
+        const orParts = [];
+        for (const t of tokens) {
+          for (const c of cols) {
+            orParts.push(`${c}.ilike.%${t}%`);
+          }
+        }
+        if (orParts.length > 0) {
+          query = query.or(orParts.join(","));
+        }
+      } else {
+        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,requirements.ilike.%${searchQuery}%`);
+      }
+    } else {
+      // Default: search by title only
+      query = query.ilike("title", `%${searchQuery}%`);
+    }
   }
 
   const { data, error } = await query;

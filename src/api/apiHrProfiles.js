@@ -56,4 +56,20 @@ export async function getHrProfileByRecruiter(token, { recruiter_id }) {
   return data;
 }
 
+// Get all HR profiles (admin)
+export async function getAllHrProfiles(token) {
+  const supabase = await supabaseClient(token);
+  const { data, error } = await supabase
+    .from("hr_profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching HR profiles:", error);
+    throw new Error("Error fetching HR profiles");
+  }
+
+  return data || [];
+}
+
 

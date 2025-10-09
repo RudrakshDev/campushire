@@ -8,7 +8,7 @@ import {
   useUser,
 } from "@clerk/clerk-react";
 import { Button } from "./ui/button";
-import { BriefcaseBusiness, Heart, PenBox, Search } from "lucide-react";
+import { BriefcaseBusiness, Heart, PenBox, Search, ScanText } from "lucide-react";
 import { ModeToggle } from "./mode-toggle";
 
 
@@ -130,6 +130,11 @@ const Header = () => {
                     My Jobs
                   </Button>
                 </Link>
+                <Link to="/hr-details">
+                  <Button variant="outline">
+                    Edit Profile
+                  </Button>
+                </Link>
               </>
             ) : (
               // Job seeker navigation
@@ -140,6 +145,20 @@ const Header = () => {
                     Find Jobs
                   </Button>
                 </Link>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/jobs?recommended=1")}
+                  >
+                    <ScanText size={20} className="mr-2" />
+                    Recommend
+                  </Button>
+                  <Link to="/resume-import">
+                    <Button variant="outline">
+                      Import from Resume
+                    </Button>
+                  </Link>
+                </div>
                 <Link to="/my-jobs">
                   <Button variant="outline">
                     <BriefcaseBusiness size={20} className="mr-2" />
@@ -162,37 +181,46 @@ const Header = () => {
               }}
             >
               <UserButton.MenuItems>
-                {user?.unsafeMetadata?.role === "recruiter" ? (
-                  <>
-                    <UserButton.Link
-                      label="My Jobs"
-                      labelIcon={<BriefcaseBusiness size={15} />}
-                      href="/my-jobs"
-                    />
-                    <UserButton.Link
-                      label="Post a Job"
-                      labelIcon={<PenBox size={15} />}
-                      href="/post-job"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <UserButton.Link
-                      label="Find Jobs"
-                      labelIcon={<Search size={15} />}
-                      href="/jobs"
-                    />
-                    <UserButton.Link
-                      label="My Applications"
-                      labelIcon={<BriefcaseBusiness size={15} />}
-                      href="/user-applies"
-                    />
-                    <UserButton.Link
-                      label="Saved Jobs"
-                      labelIcon={<Heart size={15} />}
-                      href="/saved-jobs"
-                    />
-                  </>
+                {user?.unsafeMetadata?.role === "recruiter" && (
+                  <UserButton.Link
+                    label="My Jobs"
+                    labelIcon={<BriefcaseBusiness size={15} />}
+                    href="/my-jobs"
+                  />
+                )}
+                {user?.unsafeMetadata?.role === "recruiter" && (
+                  <UserButton.Link
+                    label="Post a Job"
+                    labelIcon={<PenBox size={15} />}
+                    href="/post-job"
+                  />
+                )}
+                {user?.unsafeMetadata?.role === "recruiter" && (
+                  <UserButton.Link
+                    label="Edit Profile"
+                    href="/hr-details"
+                  />
+                )}
+                {user?.unsafeMetadata?.role !== "recruiter" && (
+                  <UserButton.Link
+                    label="Find Jobs"
+                    labelIcon={<Search size={15} />}
+                    href="/jobs"
+                  />
+                )}
+                {user?.unsafeMetadata?.role !== "recruiter" && (
+                  <UserButton.Link
+                    label="My Applications"
+                    labelIcon={<BriefcaseBusiness size={15} />}
+                    href="/user-applies"
+                  />
+                )}
+                {user?.unsafeMetadata?.role !== "recruiter" && (
+                  <UserButton.Link
+                    label="Saved Jobs"
+                    labelIcon={<Heart size={15} />}
+                    href="/saved-jobs"
+                  />
                 )}
                 <UserButton.Action label="manageAccount" />
               </UserButton.MenuItems>

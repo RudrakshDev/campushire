@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useEffect, useMemo, useState } from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
+import { useSearchParams } from "react-router-dom";
 import { State } from "country-state-city";
 import { BarLoader } from "react-spinners";
 import useFetch from "@/hooks/use-fetch";
@@ -18,13 +19,18 @@ import {
 
 import { getCompanies } from "@/api/apiCompanies";
 import { getJobs } from "@/api/apiJobs";
+import { getUserDetails } from "@/api/apiUserDetails";
 
 const JobListing = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [company_id, setCompany_id] = useState("");
 
-  const { isLoaded } = useUser();
+  const { isLoaded, user } = useUser();
+  const { getToken } = useAuth();
+  const [params] = useSearchParams();
+  const isRecommended = params.get("recommended") === "1";
+  const [prefilled, setPrefilled] = useState(false);
 
   const {
     // loading: loadingCompanies,
@@ -40,7 +46,32 @@ const JobListing = () => {
     location,
     company_id,
     searchQuery,
+    recommended: isRecommended,
   });
+
+  // If recommended flag is present, derive a search query from user details once
+  useEffect(() => {
+    const fillFromProfile = async () => {
+      if (!isRecommended || prefilled || !user?.id) return;
+      try {
+        const token = await getToken({ template: "supabase" });
+        if (!token) return;
+        const details = await getUserDetails(token, { user_id: user.id });
+        const skills = Array.isArray(details?.skills_interests)
+          ? details.skills_interests.map((s) => s.skills).filter(Boolean).join(", ")
+          : (details?.skills_interests || "");
+        const target = details?.target_title || "";
+        const derived = [target, skills].filter(Boolean).join(" ").trim();
+        if (derived) {
+          setSearchQuery(derived);
+        }
+      } catch (_) {
+      } finally {
+        setPrefilled(true);
+      }
+    };
+    if (isLoaded) fillFromProfile();
+  }, [isLoaded, isRecommended, user, getToken, prefilled]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -83,9 +114,10 @@ const JobListing = () => {
       >
         <Input
           type="text"
-          placeholder="Search Jobs by Title.."
+          placeholder={isRecommended ? "Recommended by your profile..." : "Search Jobs by Title.."}
           name="search-query"
           className="h-full flex-1  px-4 text-md"
+          defaultValue={isRecommended ? searchQuery : undefined}
         />
         <Button type="submit" className="h-full sm:w-28" variant="blue">
           Search

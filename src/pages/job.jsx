@@ -65,10 +65,12 @@ const JobPage = () => {
   return (
     <div className="flex flex-col gap-8 mt-5">
       <div className="flex flex-col-reverse gap-6 md:flex-row justify-between items-center">
-        <h1 className="gradient-title font-extrabold pb-3 text-4xl sm:text-6xl">
+        <h1 className="font-extrabold pb-3 text-4xl sm:text-6xl text-black dark:gradient-title">
           {job?.title}
         </h1>
-        <img src={job?.company?.logo_url} className="h-12" alt={job?.title} />
+        {job?.company?.logo_url && (
+          <img src={`${job.company.logo_url}?_=${job.id}`} className="h-12" alt={job?.title} />
+        )}
       </div>
 
       <div className="flex justify-between ">
@@ -117,7 +119,7 @@ const JobPage = () => {
       </h2>
       <MDEditor.Markdown
         source={job?.requirements}
-        className="bg-transparent sm:text-lg" // add global ul styles - tutorial
+        className="bg-transparent sm:text-lg text-gray-900 dark:text-gray-100"
       />
 
       {hr && (

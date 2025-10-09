@@ -5,7 +5,9 @@ import useFetch from "@/hooks/use-fetch";
 import { getApplicationsForRecruiter } from "@/api/apiApplication";
 import { getUserDetails } from "@/api/apiUserDetails";
 import { useAuth } from "@clerk/clerk-react";
-import { Mail, X, User } from "lucide-react";
+import { Mail, X, User, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const UserApplyList = () => {
   const { isLoaded, user } = useUser();
@@ -86,6 +88,45 @@ const UserApplyList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applications]);
 
+  const exportCompanyToExcel = (company, items) => {
+    // Build rows with application + candidate details
+    const rows = items.map((ap) => {
+      const cand = candidateDetailsMap[ap.candidate_id] || {};
+      return {
+        Company: ap.job?.company?.name || company,
+        JobTitle: ap.job?.title || "",
+        ApplicationId: ap.id,
+        Status: ap.status || "",
+        AppliedDate: ap.created_at ? new Date(ap.created_at).toLocaleString?.() : "",
+        CandidateId: ap.candidate_id || "",
+        CandidateFirstName: cand.first_name || "",
+        CandidateLastName: cand.last_name || "",
+        EmailPersonal: cand.personal_email || "",
+        EmailCollege: cand.college_email || "",
+        Phone: cand.phone_number || "",
+        DateOfBirth: cand.date_of_birth || "",
+        City: cand.city || "",
+        State: cand.state || "",
+        Country: cand.country || "",
+        Pincode: cand.pincode || "",
+        College: cand.college || "",
+        GraduationYear: cand.graduation_year || "",
+        Branch: cand.branch || "",
+        CGPA: cand.cgpa || "",
+        LinkedIn: cand.linkedin_url || "",
+        GitHub: cand.github_url || "",
+        Portfolio: cand.portfolio_url || "",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
+    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const filenameSafe = company.replace(/[^a-z0-9]+/gi, "_");
+    saveAs(new Blob([wbout], { type: "application/octet-stream" }), `${filenameSafe}_applications.xlsx`);
+  };
+
   const handleEmailCandidate = (candidateDetails, jobTitle) => {
     const email = candidateDetails?.personal_email || candidateDetails?.college_email;
     if (!email) {
@@ -119,14 +160,25 @@ ${userDetails?.first_name || 'Recruiter'}`;
         <div className="grid gap-4">
           {Object.entries(grouped).map(([company, items]) => (
             <div key={company} className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-              <button
-                type="button"
-                className="w-full text-left px-4 py-3 font-semibold flex justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-white"
-                onClick={() => toggle(company)}
-              >
-                <span>{company}</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{items.length} application{items.length>1?"s":""}</span>
-              </button>
+              <div className="w-full px-4 py-3 font-semibold flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className="text-left flex-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md px-2 py-1 transition-colors text-gray-900 dark:text-white"
+                  onClick={() => toggle(company)}
+                >
+                  <span>{company}</span>
+                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">{items.length} application{items.length>1?"s":""}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportCompanyToExcel(company, items)}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-md text-sm"
+                  title="Download Excel for this company"
+                >
+                  <Download size={16} />
+                  Export Excel
+                </button>
+              </div>
               {expanded[company] && (
                 <div className="px-4 pb-4 space-y-3">
                   {items.map((ap) => (

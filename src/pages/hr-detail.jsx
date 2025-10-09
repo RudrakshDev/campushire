@@ -6,45 +6,85 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@clerk/clerk-react"
 import useFetch from "@/hooks/use-fetch"
-import { upsertHrProfile } from "@/api/apiHrProfiles"
+import { upsertHrProfile, getHrProfileByRecruiter } from "@/api/apiHrProfiles"
 import { BarLoader } from "react-spinners"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
+import { useAuth } from "@clerk/clerk-react"
 
 export default function HrDetail() {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [message, setMessage] = useState("");
   const { loading, error, fn } = useFetch(upsertHrProfile);
   const navigate = useNavigate();
-  const { register, handleSubmit } = useForm({ shouldUnregister: false });
+  const { register, handleSubmit, reset } = useForm({ shouldUnregister: false });
+  const [existingProfile, setExistingProfile] = useState(null);
+
+  // Load existing profile and prefill form
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user?.id) return;
+      const token = await getToken({ template: "supabase" });
+      if (!token) return;
+      const profile = await getHrProfileByRecruiter(token, { recruiter_id: user.id });
+      setExistingProfile(profile);
+      if (profile) {
+        reset({
+          fullName: profile.full_name || "",
+          designation: profile.designation || "",
+          officialEmail: profile.email || "",
+          phoneNumber: profile.phone || "",
+          linkedinProfile: profile.linkedin_url || "",
+          companyName: profile.company_name || "",
+          industryType: profile.industry_type || "",
+          aboutCompany: profile.about_company || "",
+          headquartersLocation: profile.hq_location || "",
+          establishedYear: profile.established_year?.toString?.() || "",
+          websiteLink: profile.website_url || "",
+          companyLinkedin: profile.company_linkedin_url || "",
+          companySize: profile.company_size || "",
+          officeAddress: profile.office_address || "",
+          city: profile.city || "",
+          state: profile.state || "",
+          country: profile.country || "",
+          pincode: profile.pincode || "",
+        });
+      }
+    };
+    loadProfile();
+  }, [user?.id, getToken, reset]);
 
   const onSubmit = (data) => {
     if (!user?.id) return;
+    // Start with existing values; only overwrite with provided inputs
+    const base = existingProfile || {};
     const profile = {
+      id: base.id, // allow upsert to target the same row if present
       recruiter_id: user.id,
       // Personal
-      full_name: data.fullName || null,
-      designation: data.designation || null,
+      ...(data.fullName !== undefined && data.fullName !== "" ? { full_name: data.fullName } : {}),
+      ...(data.designation !== undefined && data.designation !== "" ? { designation: data.designation } : {}),
       // Contact
-      email: data.officialEmail || null,
-      phone: data.phoneNumber || null,
-      linkedin_url: data.linkedinProfile || null,
+      ...(data.officialEmail !== undefined && data.officialEmail !== "" ? { email: data.officialEmail } : {}),
+      ...(data.phoneNumber !== undefined && data.phoneNumber !== "" ? { phone: data.phoneNumber } : {}),
+      ...(data.linkedinProfile !== undefined && data.linkedinProfile !== "" ? { linkedin_url: data.linkedinProfile } : {}),
       // Company
-      company_name: data.companyName || null,
-      industry_type: data.industryType || null,
-      about_company: data.aboutCompany || null,
-      hq_location: data.headquartersLocation || null,
-      established_year: data.establishedYear ? Number(data.establishedYear) : null,
-      website_url: data.websiteLink || null,
-      company_linkedin_url: data.companyLinkedin || null,
-      company_size: data.companySize || null,
+      ...(data.companyName !== undefined && data.companyName !== "" ? { company_name: data.companyName } : {}),
+      ...(data.industryType !== undefined && data.industryType !== "" ? { industry_type: data.industryType } : {}),
+      ...(data.aboutCompany !== undefined && data.aboutCompany !== "" ? { about_company: data.aboutCompany } : {}),
+      ...(data.headquartersLocation !== undefined && data.headquartersLocation !== "" ? { hq_location: data.headquartersLocation } : {}),
+      ...(data.establishedYear !== undefined && data.establishedYear !== "" ? { established_year: Number(data.establishedYear) } : {}),
+      ...(data.websiteLink !== undefined && data.websiteLink !== "" ? { website_url: data.websiteLink } : {}),
+      ...(data.companyLinkedin !== undefined && data.companyLinkedin !== "" ? { company_linkedin_url: data.companyLinkedin } : {}),
+      ...(data.companySize !== undefined && data.companySize !== "" ? { company_size: data.companySize } : {}),
       // Office
-      office_address: data.officeAddress || null,
-      city: data.city || null,
-      state: data.state || null,
-      country: data.country || null,
-      pincode: data.pincode || null,
+      ...(data.officeAddress !== undefined && data.officeAddress !== "" ? { office_address: data.officeAddress } : {}),
+      ...(data.city !== undefined && data.city !== "" ? { city: data.city } : {}),
+      ...(data.state !== undefined && data.state !== "" ? { state: data.state } : {}),
+      ...(data.country !== undefined && data.country !== "" ? { country: data.country } : {}),
+      ...(data.pincode !== undefined && data.pincode !== "" ? { pincode: data.pincode } : {}),
     };
 
     fn(profile)

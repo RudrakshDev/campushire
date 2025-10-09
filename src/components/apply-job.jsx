@@ -70,27 +70,43 @@ export function ApplyJobDrawer({ user, job, fetchJob, applied = false }) {
     return <BarLoader width={"100%"} color="#36d7b7" />;
   }
 
-  // If already applied, show disabled button
+  const editProfileUrl = `/user-details?edit=1&redirect=/job/${job?.id}`;
+
+  // If already applied, show disabled button but allow editing profile
   if (applied) {
     return (
-      <Button size="lg" variant="destructive" disabled>
-        Applied
-      </Button>
+      <div className="flex gap-2 flex-wrap justify-center">
+        <Button size="lg" variant="destructive" disabled>
+          Applied
+        </Button>
+        {!needsProfile && (
+          <Button size="lg" variant="outline" onClick={() => navigate(editProfileUrl)}>
+            Edit Profile
+          </Button>
+        )}
+      </div>
     );
   }
 
   // If job closed
   if (!job?.isOpen) {
     return (
-      <Button size="lg" variant="destructive" disabled>
-        Hiring Closed
-      </Button>
+      <div className="flex gap-2 flex-wrap justify-center">
+        <Button size="lg" variant="destructive" disabled>
+          Hiring Closed
+        </Button>
+        {!needsProfile && (
+          <Button size="lg" variant="outline" onClick={() => navigate(editProfileUrl)}>
+            Edit Profile
+          </Button>
+        )}
+      </div>
     );
   }
 
   if (needsProfile) {
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-2 justify-center">
         <Button size="lg" variant="secondary" onClick={() => navigate("/user-details") }>
           Complete Profile
         </Button>
@@ -99,8 +115,13 @@ export function ApplyJobDrawer({ user, job, fetchJob, applied = false }) {
   }
 
   return (
-    <Button size="lg" variant="blue" onClick={handleApply}>
-      Apply
-    </Button>
+    <div className="flex gap-2 flex-wrap justify-center">
+      <Button size="lg" variant="blue" onClick={handleApply}>
+        Apply
+      </Button>
+      <Button size="lg" variant="outline" onClick={() => navigate(editProfileUrl)}>
+        Edit Profile
+      </Button>
+    </div>
   );
 }
