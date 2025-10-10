@@ -61,32 +61,16 @@ const ApplicationCard = ({ application, isCandidate = false, onAction = () => {}
               onClick={handleDownload}
               title="Download Resume"
             />
-            {isCandidate && (
-              <>
-                <Button variant="outline" size="sm" onClick={handleDownload} title="Edit (update resume/profile)">
-                  <Pencil size={14} className="mr-1" /> Edit
-                </Button>
-                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loadingDelete} title="Delete Application">
-                  <Trash2 size={14} className="mr-1" /> Delete
-                </Button>
-              </>
-            )}
+            {isCandidate && null}
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 flex-1">
         <div className="flex flex-col md:flex-row justify-between">
-          <div className="flex gap-2 items-center">
-            <BriefcaseBusiness size={15} /> {application?.experience} years of
-            experience
-          </div>
-          <div className="flex gap-2 items-center">
+          {/* <div className="flex gap-2 items-center">
             <School size={15} />
             {application?.education}
-          </div>
-          <div className="flex gap-2 items-center">
-            <Boxes size={15} /> Skills: {application?.skills}
-          </div>
+          </div> */}
         </div>
         <hr />
       </CardContent>

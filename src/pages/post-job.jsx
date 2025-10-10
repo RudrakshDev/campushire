@@ -269,9 +269,7 @@ const PostJob = () => {
             <MDEditor
               value={field.value}
               onChange={field.onChange}
-              data-color-mode="light"
-              className="bg-white text-black"
-              style={{ backgroundColor: "#ffffff", color: "#000000" }}
+              className="w-full"
             />
           )}
         />

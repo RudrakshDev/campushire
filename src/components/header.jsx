@@ -131,15 +131,15 @@ const Header = () => {
                 <Link to="/user-applies">
                   <Button variant="outline">
                     <BriefcaseBusiness size={20} className="mr-2" />
-                    My Jobs
+                    My Post Jobs
                   </Button>
                 </Link>
-                <Link to="/my-jobs">
+                {/* <Link to="/my-jobs">
                   <Button variant="outline">
                     <BriefcaseBusiness size={20} className="mr-2" />
                     Post Job List
                   </Button>
-                </Link>
+                </Link> */}
                 <Link to="/hr-details">
                   <Button variant="outline">
                     Edit Profile

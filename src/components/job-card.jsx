@@ -60,25 +60,7 @@ const JobCard = ({
       <CardHeader className="flex">
         <CardTitle className="flex justify-between font-bold">
           {job.title}
-          {isMyJob && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="text-xs px-2 py-1 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-                onClick={() => window.location.assign(`/post-job?edit=${job.id}`)}
-                title="Edit Job"
-              >
-                <Pencil size={14} />
-              </button>
-              <Trash2Icon
-                fill="red"
-                size={18}
-                className="text-red-300 cursor-pointer"
-                onClick={handleDeleteJob}
-                title="Delete Job"
-              />
-            </div>
-          )}
+          {isMyJob && null}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 flex-1">
