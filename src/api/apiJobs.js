@@ -145,7 +145,7 @@ export async function getMyJobs(token, { recruiter_id }) {
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("*, company: companies(name,logo_url)")
+    .select("*, company: companies(id,name,logo_url), applications: applications(id)")
     .eq("recruiter_id", recruiter_id);
 
   if (error) {
@@ -159,6 +159,22 @@ export async function getMyJobs(token, { recruiter_id }) {
 // Delete job
 export async function deleteJob(token, { job_id }) {
   const supabase = await supabaseClient(token);
+  // Delete dependents first
+  const { error: delAppsErr } = await supabase
+    .from("applications")
+    .delete()
+    .eq("job_id", job_id);
+  if (delAppsErr) {
+    console.error("Error deleting applications for job:", delAppsErr);
+  }
+
+  const { error: delSavedErr } = await supabase
+    .from("saved_jobs")
+    .delete()
+    .eq("job_id", job_id);
+  if (delSavedErr) {
+    console.error("Error deleting saved_jobs for job:", delSavedErr);
+  }
 
   const { data, error: deleteError } = await supabase
     .from("jobs")
@@ -186,6 +202,75 @@ export async function addNewJob(token, _, jobData) {
   if (error) {
     console.error(error);
     throw new Error("Error Creating Job");
+  }
+
+  return data;
+}
+
+// - update job
+export async function updateJob(token, { job_id }, jobData) {
+  const supabase = await supabaseClient(token);
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .update(jobData)
+    .eq("id", job_id)
+    .select();
+
+  if (error) {
+    console.error(error);
+    throw new Error("Error Updating Job");
+  }
+
+  return data;
+}
+
+// Bulk delete all jobs for a recruiter under a specific company
+export async function deleteJobsByCompany(token, { recruiter_id }, { company_id }) {
+  const supabase = await supabaseClient(token);
+  // 1) Fetch affected job ids
+  const { data: jobsToDelete, error: fetchErr } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("recruiter_id", recruiter_id)
+    .eq("company_id", company_id);
+
+  if (fetchErr) {
+    console.error("Error fetching jobs to delete:", fetchErr);
+    return null;
+  }
+  const jobIds = Array.isArray(jobsToDelete) ? jobsToDelete.map((j) => j.id) : [];
+  if (jobIds.length === 0) return [];
+
+  // 2) Delete dependent rows first to satisfy FKs
+  const { error: delAppsErr } = await supabase
+    .from("applications")
+    .delete()
+    .in("job_id", jobIds);
+  if (delAppsErr) {
+    console.error("Error deleting applications for jobs:", delAppsErr);
+    return null;
+  }
+
+  const { error: delSavedErr } = await supabase
+    .from("saved_jobs")
+    .delete()
+    .in("job_id", jobIds);
+  if (delSavedErr) {
+    console.error("Error deleting saved jobs for jobs:", delSavedErr);
+    return null;
+  }
+
+  // 3) Delete jobs
+  const { data, error } = await supabase
+    .from("jobs")
+    .delete()
+    .in("id", jobIds)
+    .select();
+
+  if (error) {
+    console.error("Error deleting jobs by company:", error);
+    return null;
   }
 
   return data;

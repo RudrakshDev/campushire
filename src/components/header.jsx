@@ -95,13 +95,17 @@ const Header = () => {
       <nav className="py-4 flex justify-between items-center">
         <Link to="/">
           <img
-            src="/logo-dark.png"
+            // src="/logo-dark.png"
+            src="/light.png"
+            // src="/dark.png"
             className="h-14 sm:h-24 lg:h-32 block dark:hidden transition-opacity duration-300"
             alt="Hirrd Logo (Light)"
-          />
+            />
           {/* Dark Mode Logo */}
           <img
-            src="/logo.png"
+            // src="/logo.png"
+            src="/dark.png"
+            // src="/light.png"
             className="h-14 sm:h-24 lg:h-32 hidden dark:block transition-opacity duration-300"
             alt="Hirrd Logo (Dark)"
           />
@@ -130,6 +134,12 @@ const Header = () => {
                     My Jobs
                   </Button>
                 </Link>
+                <Link to="/my-jobs">
+                  <Button variant="outline">
+                    <BriefcaseBusiness size={20} className="mr-2" />
+                    Post Job List
+                  </Button>
+                </Link>
                 <Link to="/hr-details">
                   <Button variant="outline">
                     Edit Profile
@@ -153,11 +163,6 @@ const Header = () => {
                     <ScanText size={20} className="mr-2" />
                     Recommend
                   </Button>
-                  <Link to="/resume-import">
-                    <Button variant="outline">
-                      Import from Resume
-                    </Button>
-                  </Link>
                 </div>
                 <Link to="/my-jobs">
                   <Button variant="outline">

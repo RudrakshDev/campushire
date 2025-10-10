@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Boxes, BriefcaseBusiness, Download, School } from "lucide-react";
+import { Boxes, BriefcaseBusiness, Download, School, Pencil, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,11 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { updateApplicationStatus } from "@/api/apiApplication";
+import { updateApplicationStatus, deleteApplication } from "@/api/apiApplication";
+import { Button } from "./ui/button";
 import useFetch from "@/hooks/use-fetch";
 import { BarLoader } from "react-spinners";
 
-const ApplicationCard = ({ application, isCandidate = false }) => {
+const ApplicationCard = ({ application, isCandidate = false, onAction = () => {} }) => {
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = application?.resume;
@@ -32,9 +33,17 @@ const ApplicationCard = ({ application, isCandidate = false }) => {
       job_id: application.job_id,
     }
   );
+  const { loading: loadingDelete, fn: fnDelete } = useFetch(deleteApplication, {
+    application_id: application.id,
+  });
 
   const handleStatusChange = (status) => {
     fnHiringStatus(status).then(() => fnHiringStatus());
+  };
+
+  const handleDelete = async () => {
+    await fnDelete();
+    onAction();
   };
 
   return (
@@ -45,11 +54,24 @@ const ApplicationCard = ({ application, isCandidate = false }) => {
           {isCandidate
             ? `${application?.job?.title} at ${application?.job?.company?.name}`
             : application?.name}
-          <Download
-            size={18}
-            className="bg-white text-black rounded-full h-8 w-8 p-1.5 cursor-pointer"
-            onClick={handleDownload}
-          />
+          <div className="flex items-center gap-2">
+            <Download
+              size={18}
+              className="bg-white text-black rounded-full h-8 w-8 p-1.5 cursor-pointer"
+              onClick={handleDownload}
+              title="Download Resume"
+            />
+            {isCandidate && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleDownload} title="Edit (update resume/profile)">
+                  <Pencil size={14} className="mr-1" /> Edit
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={loadingDelete} title="Delete Application">
+                  <Trash2 size={14} className="mr-1" /> Delete
+                </Button>
+              </>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 flex-1">

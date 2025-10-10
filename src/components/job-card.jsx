@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Heart, MapPinIcon, Trash2Icon } from "lucide-react";
+import { Heart, MapPinIcon, Trash2Icon, Pencil } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -61,18 +61,30 @@ const JobCard = ({
         <CardTitle className="flex justify-between font-bold">
           {job.title}
           {isMyJob && (
-            <Trash2Icon
-              fill="red"
-              size={18}
-              className="text-red-300 cursor-pointer"
-              onClick={handleDeleteJob}
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="text-xs px-2 py-1 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                onClick={() => window.location.assign(`/post-job?edit=${job.id}`)}
+                title="Edit Job"
+              >
+                <Pencil size={14} />
+              </button>
+              <Trash2Icon
+                fill="red"
+                size={18}
+                className="text-red-300 cursor-pointer"
+                onClick={handleDeleteJob}
+                title="Delete Job"
+              />
+            </div>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 flex-1">
-        <div className="flex justify-between">
-          {job.company?.logo_url && (
+        <div className="flex justify-between items-center">
+          {/* Company visual: logo if present, else fallback to name */}
+          {job.company?.logo_url ? (
             (() => {
               const isAmazon = /amazon/i.test(
                 (job.company.name || job.company.logo_url || "")
@@ -90,13 +102,29 @@ const JobCard = ({
                 />
               );
             })()
+          ) : (
+            <div className="text-sm text-gray-400 font-semibold">
+              {job.company?.name || "Unnamed Company"}
+            </div>
           )}
-          <div className="flex gap-2 items-center">
-            <MapPinIcon size={15} /> {job.location}
+          <div className="flex gap-3 items-center">
+            {isMyJob && (
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {(Array.isArray(job.applications) ? job.applications.length : 0)} Applicants
+              </span>
+            )}
+            <div className="flex gap-2 items-center">
+              <MapPinIcon size={15} /> {job.location}
+            </div>
           </div>
         </div>
         <hr />
-        {job.description.substring(0, job.description.indexOf("."))}.
+        {(() => {
+          const firstDot = job.description.indexOf(".");
+          if (firstDot > 0) return job.description.substring(0, firstDot + 1);
+          const snippet = (job.description || "").trim();
+          return snippet.length > 140 ? snippet.substring(0, 140) + "…" : snippet;
+        })()}
       </CardContent>
       <CardFooter className="flex gap-2">
         <Link to={`/job/${job.id}`} className="flex-1">
@@ -104,6 +132,11 @@ const JobCard = ({
             More Details
           </Button>
         </Link>
+        {isMyJob && (
+          <div className="flex items-center px-3 text-sm text-gray-400">
+            {(Array.isArray(job.applications) ? job.applications.length : 0)} Applicants
+          </div>
+        )}
         {!isMyJob && (
           <Button
             variant="outline"

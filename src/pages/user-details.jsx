@@ -33,6 +33,7 @@ const UserDetails = () => {
         state: "",
         country: "",
         pincode: "",
+        date_of_birth: "",
         target_title: "",
         professional_summary: "",
         work_experience: [{
@@ -486,6 +487,7 @@ const UserDetails = () => {
                 { name: "college_id", label: "College ID", type: "text", required: true },
                 { name: "personal_email", label: "Personal Email", type: "email", required: false },
                 { name: "phone_number", label: "Phone Number", type: "tel", required: false },
+                { name: "date_of_birth", label: "Date of Birth", type: "date", required: false },
                 { name: "linkedin_profile", label: "LinkedIn Profile Link", type: "url", required: false },
                 { name: "github_profile", label: "GitHub Profile Link", type: "url", required: false },
                 { name: "personal_website", label: "Personal Website/Portfolio Link", type: "url", required: false },

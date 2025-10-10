@@ -38,6 +38,7 @@ const CreatedApplications = () => {
           key={application.id}
           application={application}
           isCandidate={true}
+          onAction={fnApplications}
         />
       ))}
     </div>

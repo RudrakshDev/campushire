@@ -152,3 +152,71 @@ export async function updateCompanyLogoByName(token, { name }, file) {
   const updated = await updateCompanyLogo(token, { company_id: targetCompany.id }, file);
   return updated ? [updated] : [];
 }
+
+// Delete a company and all related data (jobs, applications, saved_jobs). Also attempts to remove logo from storage.
+export async function deleteCompanyCascade(token, _opts, params) {
+  const supabase = await supabaseClient(token);
+  // Support both call shapes: (token, {company_id,name}) and (token, _opts, {company_id,name})
+  const input = params || _opts || {};
+  let { company_id, name } = input;
+
+  // If id is missing, try to resolve by name (case-insensitive)
+  let resolvedCompanyId = company_id;
+  if (!resolvedCompanyId && name) {
+    const { data: byName, error: byNameErr } = await supabase
+      .from("companies")
+      .select("id,name,logo_url")
+      .ilike("name", name)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (byNameErr) {
+      console.error("Error resolving company by name:", byNameErr);
+      return null;
+    }
+    resolvedCompanyId = byName?.id;
+  }
+
+  if (!resolvedCompanyId) {
+    console.error("deleteCompanyCascade: Missing company_id and unable to resolve by name");
+    return null;
+  }
+
+  // Find the company first to determine logo path for storage cleanup
+  const { data: companyRow, error: findCompanyErr } = await supabase
+    .from("companies")
+    .select("id,name,logo_url")
+    .eq("id", resolvedCompanyId)
+    .single();
+
+  if (findCompanyErr) {
+    console.error("Error finding company for deletion:", findCompanyErr);
+    return null;
+  }
+
+  // With ON DELETE CASCADE FKs in place, we only need to delete the company row.
+
+  // Delete company row
+  const { data, error } = await supabase
+    .from("companies")
+    .delete()
+    .eq("id", resolvedCompanyId)
+    .select();
+
+  if (error) {
+    console.error("Error deleting company:", error);
+    return null;
+  }
+
+  // Best-effort: remove logo file from storage if publicly hosted in our bucket
+  try {
+    const url = companyRow?.logo_url || "";
+    const idx = url.lastIndexOf("/");
+    const filePath = idx >= 0 ? url.substring(idx + 1) : null;
+    if (filePath) {
+      await supabase.storage.from("company-logo").remove([filePath]);
+    }
+  } catch (_) {}
+
+  return data;
+}

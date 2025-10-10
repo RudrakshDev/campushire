@@ -80,3 +80,20 @@ export async function getApplicationsForRecruiter(token, { recruiter_id }) {
 
   return data;
 }
+
+// Candidate: delete own application
+export async function deleteApplication(token, { application_id }) {
+  const supabase = await supabaseClient(token);
+  const { data, error } = await supabase
+    .from("applications")
+    .delete()
+    .eq("id", application_id)
+    .select();
+
+  if (error) {
+    console.error("Error deleting application:", error);
+    return null;
+  }
+
+  return data;
+}
